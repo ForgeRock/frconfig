@@ -10,6 +10,9 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
+	"os"
+	crest "github.com/forgerock/frconfig/common"
+	"github.com/rackspace/gophercloud/openstack/networking/v2/extensions/fwaas/policies"
 )
 
 // Policy in OpenAMConnection
@@ -77,7 +80,7 @@ func ListPolicy(openam *OpenAMConnection) ([]Policy, error) {
 	return result.Result, err
 }
 
-func PolicytoJSON(policies []Policy) {
+func PolicytoYAML(policies []Policy) {
 	
 
 	for _, p := range policies {
@@ -122,30 +125,106 @@ func (openam *OpenAMConnection) ExportXacmlPolicies() (string, error) {
 
 }
 
-// Export all the policies as a JSON policy set
+// Export all the policies as a JSON policy set string
 func (openam *OpenAMConnection) ExportJSONPolicies() (string, error) {
 	req := openam.newRequest("GET", "/json/policies?_queryFilter=true")
 
-	client := &http.Client{}
-
-	resp, err := client.Do(req)
-	defer resp.Body.Close()
-
+	result,err := crest.GetCRESTResult(req)
 	if err != nil {
-		return "", err
+		log.Fatalf("Could not get policies, err=%v",err)
+		return "",err
 	}
 
+	log.Infof("Crest result = %+v", result)
 
-	body, err := ioutil.ReadAll(resp.Body)
+	b,err := json.Marshal(result.Result)
+	if err != nil {
+		log.Fatalf("can't marshal json: %v ", err)
+		return "",nil
+	}
 
-	return string(body),err
+	return string(b),err
 
 }
 
+func (openam *OpenAMConnection) ExportPoliciesToJSONFile(filePath string) error {
+	p,err := openam.ExportJSONPolicies()
+	if err != nil {
+		return err
+	}
+	f, err := os.Create(filePath)
+	defer f.Close()
+
+	if err != nil {
+		log.Fatalf("Could create policy file %v err = %v", filePath, err)
+		return err
+	}
+
+
+	_, err = f.WriteString(p)
+
+	if err != nil {
+		log.Fatalf("could not write policy file: %v", err)
+		return err
+	}
+	return nil
+}
+
+
+type  PolicyArray  []interface{}
+
+func (openam *OpenAMConnection) ImportPoliciesFromFile(filePath string)  error {
+	f,err := os.Open(filePath)
+	defer f.Close()
+	if err != nil {
+		log.Errorf("Can't open file %v, err=%v", filePath, err)
+	}
+	//r := bufio.NewReader(f)
+
+	bytes, err := ioutil.ReadAll(f)
+
+	if err != nil {
+		log.Errorf("Can't read policy file. Err = %v", err)
+		return err
+	}
+
+	var p PolicyArray
+
+	err = json.Unmarshal(bytes, &p)
+
+	if err != nil {
+		log.Fatalf("Can't unmarshal json file, Err=%v", err)
+	}
+
+	for _,v := range p {
+		log.Debugf("policy=%v",  v)
+	}
+	return err
+
+}
+
+// Export all the policies as a JSON policy set string
+func (openam *OpenAMConnection) ImportJSONPolicies(p PolicyArray) error {
+	req := openam.newRequest("POST", "/json/policies?_action=create")
+
+	result,err := crest.GetCRESTResult(req)
+	if err != nil {
+		log.Fatalf("Could not get policies, err=%v",err)
+		return "",err
+	}
+
+	log.Infof("Crest result = %+v", result)
+
+	b,err := json.Marshal(result.Result)
+	if err != nil {
+		log.Fatalf("can't marshal json: %v ", err)
+		return "",nil
+	}
+
+	return string(b),err
+
+}
 
 // Script query - to get Uuid
 // http://openam.test.com:8080/openam/json/scripts?_pageSize=20&_sortKeys=name&_queryFilter=true&_pagedResultsOffset=0
-
-
-
 

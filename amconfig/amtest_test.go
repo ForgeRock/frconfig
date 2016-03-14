@@ -2,7 +2,7 @@ package amconfig
 
 import (
 	"testing"
-	"os"
+	//"os"
 	//log "github.com/Sirupsen/logrus"
 )
 
@@ -16,47 +16,45 @@ func TestREST(t *testing.T) {
 		t.Fatalf("Could not authenticate")
 	}
 
-
 	rt, err := amc.ListResourceTypes()
 
 	if err != nil {
-		t.Fatalf("Could not List resoruce types")
+		t.Fatalf("Could not List resource types")
 	}
 
 	for _, v := range rt {
 		t.Logf("%v", v)
 	}
-
 }
 
-func TestXACML(t *testing.T) {
-
-	if err := amc.Authenticate(); err != nil {
-		t.Fatalf("Could not authenticate")
-	}
-
-
-	xacml, err := amc.ExportXacmlPolicies()
-
-	t.Logf("\n Xacml = %v", xacml)
-
-	if err != nil {
-		t.Fatalf("Could not get policies", err)
-	}
-
-	f, err := os.Create("/var/tmp/xacml.xml")
-	defer f.Close()
-
-	if err != nil {
-		t.Fatalf("Could create policy file", err)
-	}
-	_, err = f.WriteString(xacml)
-
-	if err != nil {
-		t.Fatalf("could not write policy file", err)
-	}
-
-}
+//func TestXACML(t *testing.T) {
+//
+//	if err := amc.Authenticate(); err != nil {
+//		t.Fatalf("Could not authenticate")
+//	}
+//
+//
+//	xacml, err := amc.ExportXacmlPolicies()
+//
+//	t.Logf("\n Xacml = %v", xacml)
+//
+//	if err != nil {
+//		t.Fatalf("Could not get policies", err)
+//	}
+//
+//	f, err := os.Create("/var/tmp/xacml.xml")
+//	defer f.Close()
+//
+//	if err != nil {
+//		t.Fatalf("Could create policy file", err)
+//	}
+//	_, err = f.WriteString(xacml)
+//
+//	if err != nil {
+//		t.Fatalf("could not write policy file", err)
+//	}
+//
+//}
 
 
 func TestJSONExport(t *testing.T) {
@@ -71,4 +69,15 @@ func TestJSONExport(t *testing.T) {
 		t.Fatalf("Cant read json policies %v", err)
 	}
 	t.Log(json)
+}
+
+func TestJSONFileExport(t *testing.T) {
+	if err :=  amc.Authenticate(); err != nil {
+		t.Fatalf("Could not authenticate")
+	}
+
+	err := amc.ExportPoliciesToJSONFile("/tmp/policy.json")
+	if err != nil {
+		t.Fatalf("Can't write json policy file: %v", err)
+	}
 }

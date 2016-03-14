@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	log "github.com/Sirupsen/logrus"
 	"net/http"
+	"bufio"
 )
 
 // OpenAMConnection to an openam server instance
@@ -21,7 +22,13 @@ type OpenAMConnection struct {
 // AuthNResponse returned by OpenAM on authenticate request
 type AuthNResponse struct {
 	TokenID   string `json: "tokenId"`
-	SucessURL string `json:"successUrl"`
+	SuccessURL string `json:"successUrl"`
+}
+
+func Open(url, user, password string) (am *OpenAMConnection,err error) {
+	am = &OpenAMConnection{BaseURL:url, User: user, Password: password}
+	err = am.Authenticate()
+	return
 }
 
 // Authenticate to OpenAM, return a tokenID of the authenticated user
@@ -72,7 +79,6 @@ func debug(data []byte, err error) {
 		log.Fatalf("%s\n\n", err)
 	}
 }
-
 
 // Create a new request setting the iPro auth cookie and the content type
 func (openam *OpenAMConnection)newRequest(kind, url string) *http.Request {
