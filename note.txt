@@ -1,0 +1,23 @@
+
+
+Command line options
+
+Object Types?
+
+- am.policy
+- am.agent
+- idm.provisioner
+- ig.route
+-
+
+# get am policy agent
+frconfig get am.policy --realm=/   >policy.json
+
+
+# create a policy
+
+frconfig create -f policy.json
+
+
+Schema
+Object type

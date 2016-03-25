@@ -1,0 +1,5 @@
+default:
+   openam:
+      url: http://openam.test.com:8080/openam
+      user: amadmin
+      password: password

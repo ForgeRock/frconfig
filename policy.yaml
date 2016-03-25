@@ -1,0 +1,107 @@
+kind: policy
+spec:
+- actionValues:
+    GET: true
+  active: true
+  applicationName: iPlanetAMWebAgentService
+  createdBy: id=amadmin,ou=user,dc=openam,dc=forgerock,dc=org
+  creationDate: 2016-02-24T17:54:04.632Z
+  description: ""
+  lastModifiedBy: id=amadmin,ou=user,dc=openam,dc=forgerock,dc=org
+  lastModifiedDate: 2016-02-24T17:54:43.876Z
+  name: IG-tets
+  resourceTypeUuid: 76656a38-5f8e-401b-83aa-4ccb74ce88d2
+  resources:
+  - http://openam.test.com:*/*
+  subject:
+    type: AuthenticatedUsers
+- actionValues: {}
+  active: true
+  applicationName: acme p2
+  createdBy: id=amadmin,ou=user,dc=openam,dc=forgerock,dc=org
+  creationDate: 2016-03-10T06:21:16.398Z
+  description: foo
+  lastModifiedBy: id=amadmin,ou=user,dc=openam,dc=forgerock,dc=org
+  lastModifiedDate: 2016-03-10T06:21:23.564Z
+  name: acmep3
+  resourceTypeUuid: 76656a38-5f8e-401b-83aa-4ccb74ce88d2
+  resources:
+  - '*://*:*/*'
+  subject:
+    type: NONE
+- actionValues: {}
+  active: true
+  applicationName: Test Policy
+  createdBy: id=amadmin,ou=user,dc=openam,dc=forgerock,dc=org
+  creationDate: 2016-03-10T06:21:47.353Z
+  description: p3
+  lastModifiedBy: id=amadmin,ou=user,dc=openam,dc=forgerock,dc=org
+  lastModifiedDate: 2016-03-10T06:21:51.694Z
+  name: p3
+  resourceTypeUuid: 76656a38-5f8e-401b-83aa-4ccb74ce88d2
+  resources:
+  - '*://*:*/*'
+  subject:
+    type: NONE
+- actionValues: {}
+  active: true
+  applicationName: iPlanetAMWebAgentService
+  createdBy: id=amadmin,ou=user,dc=openam,dc=forgerock,dc=org
+  creationDate: 2016-01-30T01:52:16.472Z
+  description: ""
+  lastModifiedBy: id=amadmin,ou=user,dc=openam,dc=forgerock,dc=org
+  lastModifiedDate: 2016-01-30T01:52:16.472Z
+  name: test
+  resourceTypeUuid: 76656a38-5f8e-401b-83aa-4ccb74ce88d2
+  resources:
+  - '*://*:*/*'
+  subject:
+    type: NONE
+- actionValues:
+    GET: true
+    HEAD: true
+    POST: true
+  active: true
+  applicationName: Test Policy
+  condition:
+    scriptId: dee577d7-c222-4013-b548-cebf616d30f0
+    type: Script
+  createdBy: id=amadmin,ou=user,dc=openam,dc=forgerock,dc=org
+  creationDate: 2016-02-26T23:41:58.310Z
+  description: Acme policy 1
+  lastModifiedBy: id=amadmin,ou=user,dc=openam,dc=forgerock,dc=org
+  lastModifiedDate: 2016-03-10T06:20:24.586Z
+  name: Acme p1
+  resourceAttributes:
+  - propertyName: authorityRevocationList
+    propertyValues: []
+    type: User
+  - propertyName: cn
+    propertyValues: []
+    type: User
+  resourceTypeUuid: 76656a38-5f8e-401b-83aa-4ccb74ce88d2
+  resources:
+  - '*://acme.com:foo/admin/*'
+  subject:
+    subjects:
+    - type: AuthenticatedUsers
+    - claimName: empFlag
+      claimValue: "true"
+      type: JwtClaim
+    type: AND
+- actionValues:
+    GET: true
+    POST: true
+  active: true
+  applicationName: OAuth2
+  createdBy: id=dsameuser,ou=user,dc=openam,dc=forgerock,dc=org
+  creationDate: 2016-01-29T01:24:25.687Z
+  description: ""
+  lastModifiedBy: id=dsameuser,ou=user,dc=openam,dc=forgerock,dc=org
+  lastModifiedDate: 2016-01-29T01:24:25.687Z
+  name: OAuth2ProviderPolicy
+  resourceTypeUuid: bf0ff204-48fa-49ff-bb45-a5574d4151dc
+  resources:
+  - http://openam.test.com:8080/openam/oauth2/authorize?*
+  subject:
+    type: AuthenticatedUsers
