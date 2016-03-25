@@ -7,7 +7,8 @@ import (
 	"io/ioutil"
 	log "github.com/Sirupsen/logrus"
 	"net/http"
-	"bufio"
+	"github.com/spf13/viper"
+	"io"
 )
 
 // OpenAMConnection to an openam server instance
@@ -25,13 +26,22 @@ type AuthNResponse struct {
 	SuccessURL string `json:"successUrl"`
 }
 
+// Create an OpenAM connection based on viper config file
+func GetOpenAMConnection() (am *OpenAMConnection,err error) {
+	url := viper.GetString("default.openam.url")
+	pass := viper.GetString("default.openam.password")
+	user := viper.GetString("default.openam.user")
+	return Open(url,user,pass)
+}
+
 func Open(url, user, password string) (am *OpenAMConnection,err error) {
 	am = &OpenAMConnection{BaseURL:url, User: user, Password: password}
 	err = am.Authenticate()
+
 	return
 }
 
-// Authenticate to OpenAM, return a tokenID of the authenticated user
+// Authenticate to OpenAM. Set the AuthN token in the connection for subsequent requests
 func (am *OpenAMConnection)Authenticate() error {
 
 	// get session token
@@ -46,6 +56,8 @@ func (am *OpenAMConnection)Authenticate() error {
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
+
+	log.Debug("Authenticating to OpenAM ", url)
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -53,13 +65,16 @@ func (am *OpenAMConnection)Authenticate() error {
 	defer resp.Body.Close()
 
 	body, _ := ioutil.ReadAll(resp.Body)
-	log.Println("response Body:", string(body))
 
 	var a AuthNResponse
 
 	err = json.Unmarshal(body, &a)
 
-	log.Printf("decoded id --------  %s\n", a.TokenID)
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Failed to Authenticate. %v", resp.Status)
+
+	}
+
 
 	am.tokenId = a.TokenID
 
@@ -81,11 +96,11 @@ func debug(data []byte, err error) {
 }
 
 // Create a new request setting the iPro auth cookie and the content type
-func (openam *OpenAMConnection)newRequest(kind, url string) *http.Request {
+func (openam *OpenAMConnection)newRequest(method, url string, body io.Reader) *http.Request {
 	//client := &http.Client{}
 
 
-	req, err := http.NewRequest(kind, openam.requestURL(url), nil)
+	req, err := http.NewRequest(method, openam.requestURL(url), body)
 	if err != nil {
 		log.Panicf("Could not create new request, err = %v", err)
 	}

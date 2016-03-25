@@ -8,6 +8,8 @@ import( "fmt"
 	"github.com/davecgh/go-spew/spew"
 "io/ioutil"
 "encoding/json"
+	"io"
+	"github.com/forgerock/frconfig/crest"
 )
 
 // ResourceType is an OpenAM policy resource type
@@ -35,7 +37,7 @@ type ResourceTypeResult struct {
 func (openam *OpenAMConnection)ListResourceTypes() ([]ResourceType, error) {
 
 	client := &http.Client{}
-	req := openam.newRequest("GET", "/json/resourcetypes?_queryFilter=true")
+	req := openam.newRequest("GET", "/json/resourcetypes?_queryFilter=true", nil)
 
 	dump, err := httputil.DumpRequestOut(req, true)
 
@@ -67,4 +69,26 @@ func (openam *OpenAMConnection)ListResourceTypes() ([]ResourceType, error) {
 	spew.Dump(result)
 
 	return result.Result, err
+}
+
+
+func CreateFRObjects(in io.Reader) (err error) {
+
+	obj,err := crest.ReadFRConfig(in)
+
+	if err != nil {
+		return err
+	}
+
+	var am *OpenAMConnection
+
+	// TOOD: Use constants here...
+	switch obj.Kind {
+	case "policy":
+		am,err = GetOpenAMConnection()
+		err = am.CreatePolicies(obj,true,true)
+	default:
+		err = fmt.Errorf("Unknown object type %s", obj.Kind)
+	}
+	return
 }

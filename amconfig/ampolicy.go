@@ -11,8 +11,8 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ghodss/yaml"
 	"os"
-	crest "github.com/forgerock/frconfig/common"
-	"github.com/rackspace/gophercloud/openstack/networking/v2/extensions/fwaas/policies"
+	crest "github.com/forgerock/frconfig/crest"
+	"bytes"
 )
 
 // Policy in OpenAMConnection
@@ -44,7 +44,7 @@ type PolicyResultList struct {
 func ListPolicy(openam *OpenAMConnection) ([]Policy, error) {
 
 	client := &http.Client{}
-	req := openam.newRequest("GET", "/json/policies?_queryFilter=true")
+	req := openam.newRequest("GET", "/json/policies?_queryFilter=true",nil)
 
 	dump, err := httputil.DumpRequestOut(req, true)
 
@@ -59,11 +59,9 @@ func ListPolicy(openam *OpenAMConnection) ([]Policy, error) {
 	}
 	defer resp.Body.Close()
 
-	//fmt.Println("response Status:", resp.Status)
-	//fmt.Println("response Headers:", resp.Header)
 	body, _ := ioutil.ReadAll(resp.Body)
 
-	fmt.Println("response Body:", string(body))
+	//fmt.Println("response Body:", string(body))
 
 	var result PolicyResultList
 
@@ -81,7 +79,6 @@ func ListPolicy(openam *OpenAMConnection) ([]Policy, error) {
 }
 
 func PolicytoYAML(policies []Policy) {
-	
 
 	for _, p := range policies {
 		s, err := json.Marshal(p)
@@ -106,7 +103,7 @@ func PolicytoYAML(policies []Policy) {
 
 // Export all the policies as a XACML policy set
 func (openam *OpenAMConnection) ExportXacmlPolicies() (string, error) {
-	req := openam.newRequest("GET", "/xacml/policies")
+	req := openam.newRequest("GET", "/xacml/policies",nil)
 
 	client := &http.Client{}
 
@@ -125,9 +122,15 @@ func (openam *OpenAMConnection) ExportXacmlPolicies() (string, error) {
 
 }
 
-// Export all the policies as a JSON policy set string
-func (openam *OpenAMConnection) ExportJSONPolicies() (string, error) {
-	req := openam.newRequest("GET", "/json/policies?_queryFilter=true")
+// todo: Do we need more field types? import/export date, meta data, etc.?
+//type FRObject struct {
+//	Kind  		string `json: "kind"`
+//	Items           *[]interface{}  `json: "items"`
+//}
+
+// Export all the policies as a JSON or YAML policy set string
+func (openam *OpenAMConnection) ExportPolicies(format string) (out string, err error) {
+	req := openam.newRequest("GET", "/json/policies?_queryFilter=true",nil)
 
 	result,err := crest.GetCRESTResult(req)
 	if err != nil {
@@ -135,20 +138,29 @@ func (openam *OpenAMConnection) ExportJSONPolicies() (string, error) {
 		return "",err
 	}
 
-	log.Infof("Crest result = %+v", result)
+	log.Debugf("Crest result = %+v", result)
 
-	b,err := json.Marshal(result.Result)
-	if err != nil {
-		log.Fatalf("can't marshal json: %v ", err)
-		return "",nil
+	var obj = &crest.FRObject{"policy", &result.Result}
+
+	var b  []byte
+
+	switch format {
+	case "yaml":
+		b,err = yaml.Marshal(obj)
+	case "json":
+		b,err = json.MarshalIndent(obj, "", "  ")
+	default:
+		return "", fmt.Errorf("Unrecognized output type %s", format)
+
 	}
 
 	return string(b),err
 
 }
 
+
 func (openam *OpenAMConnection) ExportPoliciesToJSONFile(filePath string) error {
-	p,err := openam.ExportJSONPolicies()
+	p,err := openam.ExportPolicies("json")
 	if err != nil {
 		return err
 	}
@@ -203,28 +215,79 @@ func (openam *OpenAMConnection) ImportPoliciesFromFile(filePath string)  error {
 
 }
 
-// Export all the policies as a JSON policy set string
-func (openam *OpenAMConnection) ImportJSONPolicies(p PolicyArray) error {
-	req := openam.newRequest("POST", "/json/policies?_action=create")
+// Create Policies in OpenAM instance. If continueOnError is true, keep trying
+// to create policies even if a single create fails.  If overWrite is true,
+// First delete the policy and then create it
+func (am *OpenAMConnection) CreatePolicies(obj *crest.FRObject, overWrite, continueOnError bool) (err error) {
+	// each item is a policy
 
-	result,err := crest.GetCRESTResult(req)
-	if err != nil {
-		log.Fatalf("Could not get policies, err=%v",err)
-		return "",err
+	for _,v := range *obj.Items {
+
+		// bytes,err :=  json.Marshal(v)
+
+		// cast to map so we can look at policy attrs
+		m :=  v.(map[string]interface{})
+
+		e := am.CreatePolicy(m,overWrite)
+		if e != nil {
+			if  ! continueOnError {
+				return e
+			}
+			err = e
+		}
+
 	}
+	return err
+}
 
-	log.Infof("Crest result = %+v", result)
+// Create a single policy described by the json
+func (am *OpenAMConnection) CreatePolicy(p map[string]interface{} , overWrite bool) (err error) {
+	//crest.
 
-	b,err := json.Marshal(result.Result)
-	if err != nil {
-		log.Fatalf("can't marshal json: %v ", err)
-		return "",nil
+	if  overWrite {
+		policyName := p["name"].(string)
+		err = am.DeletePolicy(policyName)
+		if err != nil {
+			fmt.Printf("Warning - can't delete policy! err=%v", err)
+		}
 	}
+	json,err := json.Marshal(p)
+	r := bytes.NewReader(json)
+	req :=  am.newRequest("POST", "/json/policies?_action=create", r)
 
-	return string(b),err
+	//req.
+
+	_,err = crest.GetCRESTResult(req)
+
+	//fmt.Printf("create policy result = %v err= %v", result, err)
+	return
 
 }
 
+
+// Delete the named policy. If the policy does exist, we do not return an error code
+func (am *OpenAMConnection)DeletePolicy(name string) (err error) {
+	url := fmt.Sprintf("/json/policies/%s", name)
+
+	req := am.newRequest("DELETE", url, nil)
+
+	client := &http.Client{}
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		return
+	}
+
+	defer resp.Body.Close()
+
+	//fmt.Printf("code = %d stat = %v", resp.StatusCode, resp.Status)
+
+	if resp.StatusCode != 404 && resp.StatusCode != 200 {
+		err = fmt.Errorf("Error deleting resource %s, err=", name, resp.Status)
+	}
+	return
+}
 // Script query - to get Uuid
 // http://openam.test.com:8080/openam/json/scripts?_pageSize=20&_sortKeys=name&_queryFilter=true&_pagedResultsOffset=0
 

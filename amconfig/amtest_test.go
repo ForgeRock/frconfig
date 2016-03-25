@@ -63,7 +63,7 @@ func TestJSONExport(t *testing.T) {
 		t.Fatalf("Could not authenticate")
 	}
 
-	json,err := amc.ExportJSONPolicies()
+	json,err := amc.ExportPolicies()
 
 	if err != nil {
 		t.Fatalf("Cant read json policies %v", err)
