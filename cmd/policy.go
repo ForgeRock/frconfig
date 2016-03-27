@@ -35,8 +35,9 @@ var policyCmd = &cobra.Command{
 
 		// get output format
 		o,err := cmd.Flags().GetString("output")
+		realm,err := cmd.Flags().GetString("realm")
 
-		str,err := am.ExportPolicies(o)
+		str,err := am.ExportPolicies(o, realm)
 		fmt.Println(str)
 
 	},

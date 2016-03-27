@@ -111,7 +111,6 @@ func (openam *OpenAMConnection)newRequest(method, url string, body io.Reader) *h
 }
 
 
-
 /*
 
 http://openam.forgerock.org/doc/bootstrap/dev-guide/index.html

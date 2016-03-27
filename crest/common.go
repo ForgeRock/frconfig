@@ -21,9 +21,12 @@ type CRESTResult struct {
 	TotalPagedResultPolicy string         `json:"totalPagedResultsPolicy"`
 }
 
+// Represents a serialized object on disk. We add some metadata and object type
+// information so we can deserialize to the right object
 type FRObject struct {
-	Kind  string `json:"kind"`
-	Items *[]interface{}  `json:"spec"`
+	Kind  		string 			`json:"kind"` // Object type
+	Metadata 	*map[string]string  	`json:"metadata"`
+	Items 		*[]interface{}  	`json:"spec"`
 }
 
 

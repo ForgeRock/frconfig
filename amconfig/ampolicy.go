@@ -114,23 +114,16 @@ func (openam *OpenAMConnection) ExportXacmlPolicies() (string, error) {
 		return "", err
 	}
 
-
-
 	body, err := ioutil.ReadAll(resp.Body)
 
 	return string(body),err
 
 }
 
-// todo: Do we need more field types? import/export date, meta data, etc.?
-//type FRObject struct {
-//	Kind  		string `json: "kind"`
-//	Items           *[]interface{}  `json: "items"`
-//}
-
 // Export all the policies as a JSON or YAML policy set string
-func (openam *OpenAMConnection) ExportPolicies(format string) (out string, err error) {
-	req := openam.newRequest("GET", "/json/policies?_queryFilter=true",nil)
+func (openam *OpenAMConnection) ExportPolicies(format,realm string) (out string, err error) {
+	url := fmt.Sprintf("/json%s/policies?_queryFilter=true", realm)
+	req := openam.newRequest("GET", url,nil)
 
 	result,err := crest.GetCRESTResult(req)
 	if err != nil {
@@ -140,7 +133,13 @@ func (openam *OpenAMConnection) ExportPolicies(format string) (out string, err e
 
 	log.Debugf("Crest result = %+v", result)
 
-	var obj = &crest.FRObject{"policy", &result.Result}
+	var m  = make(map[string]string)
+
+	if realm != "" {
+		m["realm"] = realm
+	}
+
+	var obj = &crest.FRObject{POLICY, &m, &result.Result}
 
 	var b  []byte
 
@@ -159,28 +158,28 @@ func (openam *OpenAMConnection) ExportPolicies(format string) (out string, err e
 }
 
 
-func (openam *OpenAMConnection) ExportPoliciesToJSONFile(filePath string) error {
-	p,err := openam.ExportPolicies("json")
-	if err != nil {
-		return err
-	}
-	f, err := os.Create(filePath)
-	defer f.Close()
-
-	if err != nil {
-		log.Fatalf("Could create policy file %v err = %v", filePath, err)
-		return err
-	}
-
-
-	_, err = f.WriteString(p)
-
-	if err != nil {
-		log.Fatalf("could not write policy file: %v", err)
-		return err
-	}
-	return nil
-}
+//func (openam *OpenAMConnection) ExportPoliciesToJSONFile(filePath string) error {
+//	p,err := openam.ExportPolicies("json")
+//	if err != nil {
+//		return err
+//	}
+//	f, err := os.Create(filePath)
+//	defer f.Close()
+//
+//	if err != nil {
+//		log.Fatalf("Could create policy file %v err = %v", filePath, err)
+//		return err
+//	}
+//
+//
+//	_, err = f.WriteString(p)
+//
+//	if err != nil {
+//		log.Fatalf("could not write policy file: %v", err)
+//		return err
+//	}
+//	return nil
+//}
 
 
 type  PolicyArray  []interface{}
@@ -228,7 +227,12 @@ func (am *OpenAMConnection) CreatePolicies(obj *crest.FRObject, overWrite, conti
 		// cast to map so we can look at policy attrs
 		m :=  v.(map[string]interface{})
 
-		e := am.CreatePolicy(m,overWrite)
+		realm,ok  := (*obj.Metadata)["realm"]
+		if ! ok {
+			realm = ""
+		}
+
+		e := am.CreatePolicy(m,overWrite, realm)
 		if e != nil {
 			if  ! continueOnError {
 				return e
@@ -241,19 +245,20 @@ func (am *OpenAMConnection) CreatePolicies(obj *crest.FRObject, overWrite, conti
 }
 
 // Create a single policy described by the json
-func (am *OpenAMConnection) CreatePolicy(p map[string]interface{} , overWrite bool) (err error) {
+func (am *OpenAMConnection) CreatePolicy(p map[string]interface{} , overWrite bool, realm string) (err error) {
 	//crest.
 
 	if  overWrite {
 		policyName := p["name"].(string)
-		err = am.DeletePolicy(policyName)
+		err = am.DeletePolicy(policyName,realm)
 		if err != nil {
 			fmt.Printf("Warning - can't delete policy! err=%v", err)
 		}
 	}
 	json,err := json.Marshal(p)
 	r := bytes.NewReader(json)
-	req :=  am.newRequest("POST", "/json/policies?_action=create", r)
+	url := fmt.Sprintf("/json%s/policies?_action=create", realm)
+	req :=  am.newRequest("POST", url , r)
 
 	//req.
 
@@ -266,8 +271,8 @@ func (am *OpenAMConnection) CreatePolicy(p map[string]interface{} , overWrite bo
 
 
 // Delete the named policy. If the policy does exist, we do not return an error code
-func (am *OpenAMConnection)DeletePolicy(name string) (err error) {
-	url := fmt.Sprintf("/json/policies/%s", name)
+func (am *OpenAMConnection)DeletePolicy(name, realm string) (err error) {
+	url := fmt.Sprintf("/json%s/policies/%s", name, realm)
 
 	req := am.newRequest("DELETE", url, nil)
 

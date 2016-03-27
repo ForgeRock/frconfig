@@ -1,4 +1,4 @@
-kind: policy
+kind: am.policy
 spec:
 - actionValues:
     GET: true

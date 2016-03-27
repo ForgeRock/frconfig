@@ -10,6 +10,12 @@ import( "fmt"
 "encoding/json"
 	"io"
 	"github.com/forgerock/frconfig/crest"
+	"strings"
+)
+
+const (
+	POLICY = "am.policy"
+
 )
 
 // ResourceType is an OpenAM policy resource type
@@ -72,6 +78,8 @@ func (openam *OpenAMConnection)ListResourceTypes() ([]ResourceType, error) {
 }
 
 
+// Read in an Object from the reader and create it in the ForgeRock stack
+// todo: Check for overwrite,
 func CreateFRObjects(in io.Reader) (err error) {
 
 	obj,err := crest.ReadFRConfig(in)
@@ -82,13 +90,21 @@ func CreateFRObjects(in io.Reader) (err error) {
 
 	var am *OpenAMConnection
 
-	// TOOD: Use constants here...
-	switch obj.Kind {
-	case "policy":
+	// is object type meant for OpenAM?
+	if strings.HasPrefix(obj.Kind,"am.") {
 		am,err = GetOpenAMConnection()
+		if err != nil {
+			return
+		}
+	}
+
+	//
+	switch obj.Kind {
+	case POLICY:
 		err = am.CreatePolicies(obj,true,true)
 	default:
 		err = fmt.Errorf("Unknown object type %s", obj.Kind)
 	}
 	return
 }
+
