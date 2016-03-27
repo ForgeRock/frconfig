@@ -25,7 +25,7 @@ type CRESTResult struct {
 // information so we can deserialize to the right object
 type FRObject struct {
 	Kind  		string 			`json:"kind"` // Object type
-	Metadata 	*map[string]string  	`json:"metadata"`
+	Metadata 	map[string]string  	`json:"metadata"`
 	Items 		*[]interface{}  	`json:"spec"`
 }
 

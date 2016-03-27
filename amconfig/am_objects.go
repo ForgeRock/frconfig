@@ -80,7 +80,7 @@ func (openam *OpenAMConnection)ListResourceTypes() ([]ResourceType, error) {
 
 // Read in an Object from the reader and create it in the ForgeRock stack
 // todo: Check for overwrite,
-func CreateFRObjects(in io.Reader) (err error) {
+func CreateFRObjects(in io.Reader, overwrite,continueOnError bool) (err error) {
 
 	obj,err := crest.ReadFRConfig(in)
 
@@ -98,10 +98,10 @@ func CreateFRObjects(in io.Reader) (err error) {
 		}
 	}
 
-	//
+	fmt.Printf("Handling object %s", obj.Kind)
 	switch obj.Kind {
 	case POLICY:
-		err = am.CreatePolicies(obj,true,true)
+		err = am.CreatePolicies(obj,overwrite,continueOnError)
 	default:
 		err = fmt.Errorf("Unknown object type %s", obj.Kind)
 	}

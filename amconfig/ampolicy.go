@@ -139,7 +139,7 @@ func (openam *OpenAMConnection) ExportPolicies(format,realm string) (out string,
 		m["realm"] = realm
 	}
 
-	var obj = &crest.FRObject{POLICY, &m, &result.Result}
+	var obj = &crest.FRObject{POLICY, m, &result.Result}
 
 	var b  []byte
 
@@ -227,10 +227,10 @@ func (am *OpenAMConnection) CreatePolicies(obj *crest.FRObject, overWrite, conti
 		// cast to map so we can look at policy attrs
 		m :=  v.(map[string]interface{})
 
-		realm,ok  := (*obj.Metadata)["realm"]
-		if ! ok {
-			realm = ""
-		}
+
+		realm,_  := (*obj).Metadata["realm"]
+
+		//fmt.Printf("Creating Policy %v realm = %s ", m, realm)
 
 		e := am.CreatePolicy(m,overWrite, realm)
 		if e != nil {
@@ -272,9 +272,11 @@ func (am *OpenAMConnection) CreatePolicy(p map[string]interface{} , overWrite bo
 
 // Delete the named policy. If the policy does exist, we do not return an error code
 func (am *OpenAMConnection)DeletePolicy(name, realm string) (err error) {
-	url := fmt.Sprintf("/json%s/policies/%s", name, realm)
+	url := fmt.Sprintf("/json%s/policies/%s", realm, name)
 
 	req := am.newRequest("DELETE", url, nil)
+
+	//fmt.Printf("Delete request %s\n", url)
 
 	client := &http.Client{}
 

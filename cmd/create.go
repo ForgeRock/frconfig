@@ -22,11 +22,16 @@ import (
 	"os"
 	"io"
 	"github.com/forgerock/frconfig/amconfig"
+	"path/filepath"
 )
 
 type CreateOptions struct {
 	Filenames []string
 }
+
+var (
+	overwrite, continueOnError  bool
+)
 
 
 func init() {
@@ -40,39 +45,26 @@ func init() {
 	Create a configuration object`,
 
 		Run: func(cmd *cobra.Command, args []string) {
-
-			var err error
 			if len(options.Filenames) == 0 {
 				cmd.Help()
 				return
 			}
-
+			overwrite, _ = cmd.Flags().GetBool("overwrite")
+			continueOnError, _ = cmd.Flags().GetBool("continue")
 			//fmt.Println("create called file = ", options.Filenames)
 
 			for _,v := range options.Filenames {
-				//fmt.Printf("File name = %s", v)
-				var  f io.Reader
-				if v == "-" {
-					f = os.Stdin
-				} else {
-					f,err = os.Open(v)
-				}
-
+				err := createObject(v)
 				if err != nil {
-					msg := fmt.Sprintf("Can't open %s", v)
-					fatal(msg)
-
+					fatal(fmt.Sprintf("Can't create object, err %v", err))
 				}
-				err = amconfig.CreateFRObjects(f)
-				if err != nil {
-					fatal(fmt.Sprintf("Error reading config %v ",err))
-				}
-
 			}
 		},
 	}
 
 	RootCmd.AddCommand(createCmd)
+
+	createCmd.PersistentFlags().Bool("overwrite",true,"If true, overwrite any existing value")
 
 
 	usage := "Filename, directory, or URL to file to use to create the resource"
@@ -82,6 +74,41 @@ func init() {
 	// there could be sub commands - so -f is not required
 	// createCmd.MarkFlagRequired("filename")
 
+}
+
+// Create the object described by fileName
+// If fileName is - read from stdin
+// If fileName is a directory, recurse and read all files (*.json, *.yaml) in that diretory
+func createObject(fileName string) (err error) {
+	if fileName == "-" {
+		return createStream(os.Stdin)
+	}
+	err = filepath.Walk(fileName, visit)
+	return err
+}
+
+func visit(path string, f os.FileInfo, err error) error {
+	//fmt.Printf("Visited: %s\n", path)
+	if  ! f.IsDir() {
+		ext := filepath.Ext(path)
+		// skip any file that is not a json or yaml format
+		if ext != "json" && ext != "yml" && ext != "yaml" {
+			return nil
+		}
+		file,err := os.Open(path)
+		defer file.Close()
+		if err != nil {
+			return err
+		}
+		return createStream( file )
+	}
+	return nil
+}
+
+
+func createStream(f io.Reader) (err error) {
+	err = amconfig.CreateFRObjects(f, overwrite,continueOnError)
+	return err
 }
 
 var FileExtensions = []string{".json", ".yaml", ".yml"}
