@@ -141,19 +141,7 @@ func (openam *OpenAMConnection) ExportPolicies(format,realm string) (out string,
 
 	var obj = &crest.FRObject{POLICY, m, &result.Result}
 
-	var b  []byte
-
-	switch format {
-	case "yaml":
-		b,err = yaml.Marshal(obj)
-	case "json":
-		b,err = json.MarshalIndent(obj, "", "  ")
-	default:
-		return "", fmt.Errorf("Unrecognized output type %s", format)
-
-	}
-
-	return string(b),err
+	return obj.Marshal(format)
 
 }
 
@@ -248,7 +236,7 @@ func (am *OpenAMConnection) CreatePolicies(obj *crest.FRObject, overWrite, conti
 func (am *OpenAMConnection) CreatePolicy(p map[string]interface{} , overWrite bool, realm string) (err error) {
 	//crest.
 
-	if  overWrite {
+	if  overWrite { // try to delete existing policy if it exists
 		policyName := p["name"].(string)
 		err = am.DeletePolicy(policyName,realm)
 		if err != nil {

@@ -1,22 +1,25 @@
 package amconfig
 
-import( "fmt"
+import (
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"net/http"
 	"net/http/httputil"
 
 	"github.com/davecgh/go-spew/spew"
-"io/ioutil"
-"encoding/json"
-	"io"
+	"io/ioutil"
+	"encoding/json"
 	"github.com/forgerock/frconfig/crest"
-	"strings"
 )
 
+// object types we know how to read/create
 const (
 	POLICY = "am.policy"
-
 )
+
+func init() {
+	crest.RegisterCreateObjectHandler([]string{POLICY}, CreateObjects)
+}
 
 // ResourceType is an OpenAM policy resource type
 type ResourceType struct {
@@ -54,13 +57,11 @@ func (openam *OpenAMConnection)ListResourceTypes() ([]ResourceType, error) {
 
 	debug(httputil.DumpResponse(resp, true))
 
-
 	if err != nil {
 		return nil, err
 	}
 
 	body, _ := ioutil.ReadAll(resp.Body)
-
 
 	var result ResourceTypeResult
 
@@ -77,31 +78,14 @@ func (openam *OpenAMConnection)ListResourceTypes() ([]ResourceType, error) {
 	return result.Result, err
 }
 
-
-// Read in an Object from the reader and create it in the ForgeRock stack
-// todo: Check for overwrite,
-func CreateFRObjects(in io.Reader, overwrite,continueOnError bool) (err error) {
-
-	obj,err := crest.ReadFRConfig(in)
-
+func CreateObjects(obj *crest.FRObject, overwrite, continueOnError bool) (err error) {
+	am, err := GetOpenAMConnection()
 	if err != nil {
 		return err
 	}
-
-	var am *OpenAMConnection
-
-	// is object type meant for OpenAM?
-	if strings.HasPrefix(obj.Kind,"am.") {
-		am,err = GetOpenAMConnection()
-		if err != nil {
-			return
-		}
-	}
-
-	fmt.Printf("Handling object %s", obj.Kind)
 	switch obj.Kind {
 	case POLICY:
-		err = am.CreatePolicies(obj,overwrite,continueOnError)
+		err = am.CreatePolicies(obj, overwrite, continueOnError)
 	default:
 		err = fmt.Errorf("Unknown object type %s", obj.Kind)
 	}

@@ -20,9 +20,10 @@ import (
 	"github.com/spf13/cobra"
 	"strings"
 	"os"
-	"io"
-	"github.com/forgerock/frconfig/amconfig"
 	"path/filepath"
+	"github.com/forgerock/frconfig/crest"
+	log "github.com/Sirupsen/logrus"
+
 )
 
 type CreateOptions struct {
@@ -81,35 +82,38 @@ func init() {
 // If fileName is a directory, recurse and read all files (*.json, *.yaml) in that diretory
 func createObject(fileName string) (err error) {
 	if fileName == "-" {
-		return createStream(os.Stdin)
+		return crest.CreateFRObjects(os.Stdin, overwrite,continueOnError)
 	}
 	err = filepath.Walk(fileName, visit)
 	return err
 }
 
+var extents = map[string]bool{ ".json":true, ".yaml":true, ".yml":true }
+
 func visit(path string, f os.FileInfo, err error) error {
-	//fmt.Printf("Visited: %s\n", path)
+	//fmt.Printf("Visiting: %s, f = %v dir = %v\n", path, f.Name(), f.IsDir())
+	log.Debugf("visit path %s", path)
+	if err != nil {
+		return err
+	}
 	if  ! f.IsDir() {
 		ext := filepath.Ext(path)
-		// skip any file that is not a json or yaml format
-		if ext != "json" && ext != "yml" && ext != "yaml" {
+		if _,ok := extents[ext];  ! ok {
+			fmt.Printf("Skipping file %s with unknown ext %s\n", path, ext)
 			return nil
 		}
+
 		file,err := os.Open(path)
 		defer file.Close()
 		if err != nil {
+			fmt.Printf("Can't open path %s", path)
 			return err
 		}
-		return createStream( file )
+		return crest.CreateFRObjects(file, overwrite,continueOnError)
 	}
 	return nil
 }
 
-
-func createStream(f io.Reader) (err error) {
-	err = amconfig.CreateFRObjects(f, overwrite,continueOnError)
-	return err
-}
 
 var FileExtensions = []string{".json", ".yaml", ".yml"}
 //var InputExtensions = append(FileExtensions, "stdin")

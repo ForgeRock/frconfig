@@ -1,5 +1,10 @@
 default:
-   openam:
-      url: http://openam.test.com:8080/openam
-      user: amadmin
-      password: password
+  openam:
+    url: http://openam.test.com:8080/openam
+    user: amadmin
+    password: password
+  openidm:
+    url: http://localhost:18080/openidm
+    user: openidm-admin
+    password: openidm-admin
+

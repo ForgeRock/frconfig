@@ -68,6 +68,8 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
+
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -78,8 +80,8 @@ func initConfig() {
 
 	viper.SetConfigName("frconfig") // name of config file (without extension)
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath("$HOME")  // adding home directory as first search path
-	viper.AddConfigPath(".")  // adding current dir
+	viper.AddConfigPath(".")  // adding current dir to search path
+	viper.AddConfigPath("$HOME/.frconfig")  // adding home directory
 
 	viper.AutomaticEnv()          // read in environment variables that match
 
@@ -90,5 +92,7 @@ func initConfig() {
 		fmt.Println("Viper err ", err)
 	}
 
+	log.SetLevel(log.DebugLevel)
+	log.SetOutput(os.Stderr)
 	//fmt.Printf("Viper url= %v\n", viper.GetString("default.openam.url"))
 }

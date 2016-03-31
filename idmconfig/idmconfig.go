@@ -13,7 +13,20 @@ import (
 	"errors"
 	"bytes"
 	"net/http/httputil"
+	"github.com/spf13/viper"
+	"github.com/forgerock/frconfig/crest"
 )
+
+
+const (
+	IDM_CONFIGURATION = "idm.conf"
+)
+
+
+func init() {
+	crest.RegisterCreateObjectHandler( []string{IDM_CONFIGURATION}, CreateObjects)
+
+}
 
 
 type IDMConnection struct {
@@ -23,6 +36,18 @@ type IDMConnection struct {
 	httpClient *http.Client
 	session_jwt *http.Cookie
 }
+
+
+// Create an OpenAM connection based on viper config file
+func GetOpenIDMConnection() (idm *IDMConnection,err error) {
+	url := viper.GetString("default.openidm.url")
+	pass := viper.GetString("default.openidm.password")
+	user := viper.GetString("default.openidm.user")
+	idm = &IDMConnection{BaseURL:url, User:user, Password:pass}
+	err = idm.Authenticate()
+	return
+}
+
 
 // Authenticate to OpenIDM, and get the session jwt for subsequent REST operations
 func (idm *IDMConnection) Authenticate() error {
@@ -125,6 +150,32 @@ func (idm *IDMConnection) POST(path string, body []byte) (string,error) {
 // create a the request URL given the partial path
 func (idm *IDMConnection) requestURL(path string) string {
 	return fmt.Sprint(idm.BaseURL, path)
+}
+
+func  (idm *IDMConnection) GetConfig(format string) (config string,err error) {
+	path := "/config?_queryFilter=_id+sw+\"\"&prettyPrint=true"
+
+	req, err := http.NewRequest(http.MethodGet, idm.requestURL(path), nil)
+	idm.setHeaders(req)
+	result,err := crest.GetCRESTResult(req)
+
+	if err != nil {
+		return "",fmt.Errorf("Cant get config, err = %v", err)
+	}
+	// todo: fix the type issues...
+	obj := &crest.FRObject{Kind: "idm.config", Items: &result.Result}
+
+	return obj.Marshal(format)
+}
+
+func CreateObjects(obj *crest.FRObject, overwrite, continueOnError bool) (err error){
+	idm, err := GetOpenIDMConnection()
+
+	switch( obj.Kind ) {
+	case IDM_CONFIGURATION:
+		fmt.Printf("Create idm conf %v", idm)
+	}
+	return nil
 }
 
 // command ./cli.sh configexport --user openidm-admin:openidm-admin ./tmp
